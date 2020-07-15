@@ -1,5 +1,6 @@
 ﻿using CommandSystem;
 using Exiled.API.Features;
+using Exiled.Permissions.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +18,12 @@ namespace NPC.Commands
 
         public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
         {
+            var player = Player.Get((sender as CommandSender).SenderId);
+            if (!player.CheckPermission("npc"))
+            {
+                response = "No permission";
+                return true;
+            }
             if (arguments.Count == 0)
             {
                 sender.Respond(" NPC Commands:");
@@ -36,17 +43,17 @@ namespace NPC.Commands
                 {
                     case "list":
                         sender.Respond(" NPC List:");
-                        foreach(var npc in NpcManager.singleton.npcs)
+                        foreach(var npc in NpcManager.singleton.playerNpcsData[ServerStatic.ServerPort])
                         {
-                            sender.Respond($" - [{npc.Key}] {npc.Value.NpcName} | Pos: [{npc.Value.Position[0]}, {npc.Value.Position[1]}, {npc.Value.Position[2]}", true);
+                            sender.Respond($" - [{npc.NpcID}] {npc.NpcName} | Pos: [{(int)npc.Position.x}, {(int)npc.Position.y}, {(int)npc.Position.z}", true);
                         }
                         sender.Respond(" ");
                         break;
                     case "create":
-                        if (arguments.Count == 2)
+                        if (arguments.Count == 3)
                         {
                             Player p = Player.Get((sender as CommandSender).SenderId);
-                            int id = NpcManager.singleton.CreateNPC(arguments.At(1), short.Parse(arguments.At(2)), p.Position, p.Rotation, new UnityEngine.Vector3(1f, 1f, 1f));
+                            int id = NpcManager.singleton.CreateNPC(arguments.At(1), "", "", short.Parse(arguments.At(2)), p.Position, p.ReferenceHub.PlayerCameraReference.rotation.eulerAngles, new UnityEngine.Vector3(1f, 1f, 1f));
                             if (NpcManager.singleton.selectedNpcs.ContainsKey(p.UserId))
                                 NpcManager.singleton.selectedNpcs[p.UserId] = id;
                             else
@@ -56,29 +63,33 @@ namespace NPC.Commands
                         }
                         break;
                     case "remove":
-                        if (arguments.Count == 1)
+                        if (arguments.Count == 2)
                         {
                             Player p = Player.Get((sender as CommandSender).SenderId);
                             int npcid = int.Parse(arguments.At(1));
-                            if (NpcManager.singleton.npcs.ContainsKey(npcid))
-                            {
-                                NpcManager.singleton.RemoveNPC(npcid);
-                                sender.Respond("Removed npc with id " + npcid);
-                            }
+                            NpcManager.singleton.RemoveNPC(npcid);
+                            sender.Respond("Removed npc with id " + npcid);
                         }
                         break;
+                    case "load":
+                        NpcManager.singleton.Reload();
+                        break;
                     case "edit":
-                        if (arguments.Count == 1)
+                        if (arguments.Count == 2)
                         {
                             Player p = Player.Get((sender as CommandSender).SenderId);
                             int npcid = int.Parse(arguments.At(1));
-                            if (NpcManager.singleton.npcs.ContainsKey(npcid))
+                            if (NpcManager.singleton.playerNpcsData[ServerStatic.ServerPort].Where(p2 => p2.NpcID == npcid).FirstOrDefault() != null)
                             {
                                 if (NpcManager.singleton.selectedNpcs.ContainsKey(p.UserId))
                                     NpcManager.singleton.selectedNpcs[p.UserId] = npcid;
                                 else
                                     NpcManager.singleton.selectedNpcs.Add(p.UserId, npcid);
                                 sender.Respond("Selected npc with id " + npcid);
+                            }
+                            else
+                            {
+                                sender.Respond("Npc with id " + npcid + " not found.");
                             }
                         }
                         break;
