@@ -29,15 +29,40 @@ namespace NPC
             if (!File.Exists(Path.Combine(plugin.pluginDir, "npcs.json")))
                 File.WriteAllText(Path.Combine(plugin.pluginDir, "npcs.json"), JsonConvert.SerializeObject(new Dictionary<ushort, List<PlayerNPC>>(), Formatting.Indented));
             playerNpcsData = JsonConvert.DeserializeObject<Dictionary<ushort, List<PlayerNPC>>>(File.ReadAllText(Path.Combine(plugin.pluginDir, "npcs.json")));
-            if (!playerNpcsData.ContainsKey(ServerStatic.ServerPort))
-                playerNpcsData.Add(ServerStatic.ServerPort, new List<PlayerNPC>());
+            if (!playerNpcsData.ContainsKey((ushort)ServerConsole.Port))
+                playerNpcsData.Add((ushort)ServerConsole.Port, new List<PlayerNPC>());
             File.WriteAllText(Path.Combine(plugin.pluginDir, "npcs.json"), JsonConvert.SerializeObject(playerNpcsData, Formatting.Indented));
+            Timing.RunCoroutine(UpdateNickNames());
+        }
+
+        public IEnumerator<float> UpdateNickNames()
+        {
+            while(true)
+            {
+                yield return Timing.WaitForSeconds(3f);
+                try
+                {
+                    foreach(var p in playerNpcsData[(ushort)ServerConsole.Port])
+                    {
+                        try
+                        {
+                            if (p.npcObject != null)
+                            {
+                                p.npcObject.GetComponent<ServerRoles>().NetworkMyText = ServerConsole.singleton.NameFormatter.ProcessExpression(p.RoleName);
+                            }
+                        }
+                        catch (Exception rc) { Log.Error("Failed updating rolename" + rc.ToString()); }
+
+                    }
+                }
+                catch(Exception) { }
+            }
         }
         public void Reload()
         {
-            if (!playerNpcsData.ContainsKey(ServerStatic.ServerPort))
+            if (!playerNpcsData.ContainsKey((ushort)ServerConsole.Port))
                 return;
-            foreach (var npc in playerNpcsData[ServerStatic.ServerPort])
+            foreach (var npc in playerNpcsData[(ushort)ServerConsole.Port])
             {
                 if (npc.npcObject != null)
                     NetworkServer.Destroy(npc.npcObject);
@@ -50,7 +75,7 @@ namespace NPC
 
         public void LoadNpcsAfterRestart()
         {
-            foreach(var npc in playerNpcsData[ServerStatic.ServerPort])
+            foreach(var npc in playerNpcsData[(ushort)ServerConsole.Port])
             {
                 if (npc.npcObject != null)
                     NetworkServer.Destroy(npc.npcObject);
@@ -71,7 +96,7 @@ namespace NPC
         {
             for (int i = 1; i < int.MaxValue; i++)
             {
-                if (playerNpcsData[ServerStatic.ServerPort].Any(p => p.NpcID == i))
+                if (playerNpcsData[(ushort)ServerConsole.Port].Any(p => p.NpcID == i))
                     continue;
 
                 return i;
@@ -81,15 +106,15 @@ namespace NPC
 
         public void RemoveNPC(int npcId)
         {
-            var d = playerNpcsData[ServerStatic.ServerPort].Where(p => p.NpcID == npcId).FirstOrDefault();
+            var d = playerNpcsData[(ushort)ServerConsole.Port].Where(p => p.NpcID == npcId).FirstOrDefault();
             if (d != null)
             {
                 NetworkServer.Destroy(d.npcObject);
-                playerNpcsData[ServerStatic.ServerPort].Remove(d);
+                playerNpcsData[(ushort)ServerConsole.Port].Remove(d);
             }
-            if (!playerNpcsData.ContainsKey(ServerStatic.ServerPort))
+            if (!playerNpcsData.ContainsKey((ushort)ServerConsole.Port))
                 return;
-            playerNpcsData[ServerStatic.ServerPort].Remove(playerNpcsData[ServerStatic.ServerPort].Where(p => p.NpcID == npcId).FirstOrDefault());
+            playerNpcsData[(ushort)ServerConsole.Port].Remove(playerNpcsData[(ushort)ServerConsole.Port].Where(p => p.NpcID == npcId).FirstOrDefault());
             File.WriteAllText(Path.Combine(plugin.pluginDir, "npcs.json"), JsonConvert.SerializeObject(playerNpcsData, Formatting.Indented));
         }
 
@@ -106,6 +131,7 @@ namespace NPC
 
                 component.enabled = false;
             }
+            Log.Info("Spawned npc " + npcName);
 
 
             hub.characterClassManager.NetworkCurClass = (global::RoleType)RoleType;
@@ -115,7 +141,7 @@ namespace NPC
             npcc.transform.rotation = Quaternion.Euler(rotation);
             hub.characterClassManager.GodMode = true;
             if (itemId != -1)
-                hub.inventory.NetworkcurItem = (ItemType)itemId;
+                hub.inventory.Network_curItemSynced = (ItemType)itemId;
             Timing.CallDelayed(1f, () =>
             {
                 hub.nicknameSync.MyNick = $"{npcName}";
@@ -124,10 +150,10 @@ namespace NPC
 
             hub.queryProcessor.PlayerId = id;
 
-            hub.playerMovementSync._realModelPosition = position;
+            hub.playerMovementSync.RealModelPosition = position;
             if (id == -1)
             {
-                playerNpcsData[ServerStatic.ServerPort].Add(new PlayerNPC()
+                playerNpcsData[(ushort)ServerConsole.Port].Add(new PlayerNPC()
                 {
                     npcObject = npcc,
                     NpcID = npcId,
@@ -140,7 +166,7 @@ namespace NPC
                 File.WriteAllText(Path.Combine(plugin.pluginDir, "npcs.json"), JsonConvert.SerializeObject(playerNpcsData, Formatting.Indented));
             }
             else
-                playerNpcsData[ServerStatic.ServerPort].Where(tt => tt.NpcID == npcId).FirstOrDefault().npcObject = npcc;
+                playerNpcsData[(ushort)ServerConsole.Port].Where(tt => tt.NpcID == npcId).FirstOrDefault().npcObject = npcc;
             return npcId;
         }
 

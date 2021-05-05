@@ -13,7 +13,6 @@ namespace NPC
         public override string Name { get; } = "NPC";
         public override string Author { get; } = "Killers0992";
         public override string Prefix { get; } = "npc";
-        public override Version Version { get; } = new Version("1.0.0");
 
         public EventHandlers eventHandlers;
         public NpcManager npcManager;
@@ -24,7 +23,7 @@ namespace NPC
             if (!Config.IsEnabled)
                 return;
             string folderPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            pluginDir = Path.Combine(folderPath, "EXILED-PTB", "Plugins", "NPC");
+            pluginDir = Path.Combine(folderPath, "EXILED", "Plugins", "NPC");
             if (!Directory.Exists(pluginDir))
                 Directory.CreateDirectory(pluginDir);
             eventHandlers = new EventHandlers(this);

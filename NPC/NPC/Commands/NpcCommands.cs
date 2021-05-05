@@ -43,7 +43,7 @@ namespace NPC.Commands
                 {
                     case "list":
                         sender.Respond(" NPC List:");
-                        foreach(var npc in NpcManager.singleton.playerNpcsData[ServerStatic.ServerPort])
+                        foreach(var npc in NpcManager.singleton.playerNpcsData[(ushort)ServerConsole.Port])
                         {
                             sender.Respond($" - [{npc.NpcID}] {npc.NpcName} | Pos: [{(int)npc.Position.x}, {(int)npc.Position.y}, {(int)npc.Position.z}", true);
                         }
@@ -79,7 +79,7 @@ namespace NPC.Commands
                         {
                             Player p = Player.Get((sender as CommandSender).SenderId);
                             int npcid = int.Parse(arguments.At(1));
-                            if (NpcManager.singleton.playerNpcsData[ServerStatic.ServerPort].Where(p2 => p2.NpcID == npcid).FirstOrDefault() != null)
+                            if (NpcManager.singleton.playerNpcsData[(ushort)ServerConsole.Port].Where(p2 => p2.NpcID == npcid).FirstOrDefault() != null)
                             {
                                 if (NpcManager.singleton.selectedNpcs.ContainsKey(p.UserId))
                                     NpcManager.singleton.selectedNpcs[p.UserId] = npcid;
